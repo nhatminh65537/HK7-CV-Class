@@ -1,0 +1,19 @@
+# Chạy thử toàn bộ pipeline với 2 ca mẫu nhỏ (dùng được ngay cả khi file tar lớn chưa tải xong)
+base: transunet2d.yaml
+data:
+  tar_paths:
+    - "D:/Learning Projects/CV/Data/BraTS2021_00495.tar"
+    - "D:/Learning Projects/CV/Data/BraTS2021_00621.tar"
+  index_path: data/samples_tar_index.json
+splits: data/splits_samples.json
+output_dir: runs/debug_samples
+train:
+  batch_size: 4
+  num_workers: 0
+  epochs: 2
+  iters_per_epoch: 10
+  warmup_epochs: 1
+  print_every: 5
+eval:
+  every: 1
+  val_cases: 2

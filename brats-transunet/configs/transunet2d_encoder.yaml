@@ -1,0 +1,8 @@
+# Cấu hình "Encoder-only": U-Net + ViT ở bottleneck, decoder CNN thường
+base: base.yaml
+output_dir: runs/transunet2d_encoder
+model:
+  name: unet
+  spatial_dims: 2
+  features: [32, 64, 128, 256, 320]
+  vit_bottleneck: {depth: 4, hidden: 384, heads: 6}

@@ -1,0 +1,7 @@
+# Baseline: U-Net 2D thuần CNN (để so sánh với TransUNet)
+base: base.yaml
+output_dir: runs/unet2d
+model:
+  name: unet
+  spatial_dims: 2
+  features: [32, 64, 128, 256, 320]

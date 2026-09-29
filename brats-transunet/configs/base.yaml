@@ -1,0 +1,47 @@
+# ============================================================================
+# Cấu hình chung. Các file khác kế thừa bằng `base: base.yaml` rồi ghi đè phần cần đổi.
+# Ghi đè nhanh từ dòng lệnh: python train.py --config ... --opts train.epochs=2 data.source=npz
+# ============================================================================
+seed: 42
+
+data:
+  source: tar                 # tar = đọc thẳng từ .tar (không giải nén) | npz = cache | dir = thư mục đã giải nén
+  tar_paths:                  # Windows: dùng dấu / trong YAML (D:/... thay vì D:\...)
+    - "D:/Learning Projects/CV/Data/BraTS2021_Training_Data.tar"
+  index_path: data/brats2021_tar_index.json
+  npz_dir: D:/Learning Projects/CV/brats_cache   # dùng khi source=npz (tạo bằng scripts/cache_dataset.py)
+  dir: ""                     # dùng khi source=dir
+
+splits: data/splits.json      # tạo bằng scripts/make_splits.py
+output_dir: runs/base
+
+model:
+  name: unet
+  spatial_dims: 2
+  features: [32, 64, 128, 256, 320]
+
+train:
+  patch_size: [160, 160]      # 2D: (H, W) ; 3D: (X, Y, Z)
+  batch_size: 8
+  num_workers: 2              # số process đọc dữ liệu (mỗi process giữ pool_size ca trong RAM)
+  pool_size: 4
+  samples_per_load: 16        # số mẫu cắt ra mỗi lần nạp 1 ca mới
+  fg_prob: 0.5                # xác suất chọn mẫu có u (cân bằng vì u rất nhỏ)
+  augment:
+    affine_prob: 0.2
+  epochs: 100
+  iters_per_epoch: 250
+  warmup_epochs: 2
+  lr: 3.0e-4
+  weight_decay: 3.0e-5
+  grad_accum: 1
+  amp: true
+  print_every: 50
+
+eval:
+  every: 5                    # validate mỗi 5 epoch
+  val_cases: 10               # chỉ dùng 10 ca val khi đang train cho nhanh; đánh giá đủ bằng evaluate.py
+  batch_size: 16              # số lát cắt / lần (2D)
+  sw_batch_size: 1            # 3D sliding window
+  overlap: 0.5
+  threshold: 0.5             # ngưỡng cắt xác suất thành mask nhị phân

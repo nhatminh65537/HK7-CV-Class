@@ -1,0 +1,8 @@
+# Cài PyTorch (bản CUDA) TRƯỚC, xem docs/02_LO_TRINH_VA_SETUP.md mục 2.3
+monai>=1.3
+nibabel>=5.0
+numpy
+scipy
+pyyaml
+matplotlib
+tqdm

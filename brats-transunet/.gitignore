@@ -1,0 +1,7 @@
+runs/
+data/*index.json
+figures/
+__pycache__/
+*.pyc
+.venv/
+*.pt

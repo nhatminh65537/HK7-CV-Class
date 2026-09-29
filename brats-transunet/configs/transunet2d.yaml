@@ -1,0 +1,19 @@
+# TransUNet 2D, cấu hình "Decoder-only" (cấu hình paper dùng cho BraTS), thu nhỏ theo chiều không gian
+base: base.yaml
+output_dir: runs/transunet2d
+model:
+  name: transunet
+  spatial_dims: 2
+  features: [32, 64, 128, 256, 320]
+  decoder:
+    hidden: 192               # d_dec trong paper
+    num_queries: 20           # N query
+    layers: 3                 # 3 vòng coarse-to-fine
+    heads: 8
+    ffn_mult: 8
+    masked_attn: true
+    ms_idxs: [-4, -3, -2]     # dùng feature 1/8, 1/4, 1/2 của U-Net decoder cho cross-attention
+  # vit_bottleneck: {depth: 1, hidden: 384, heads: 6}   # bật dòng này = cấu hình Encoder+Decoder
+loss:
+  cost_weight: [2.0, 5.0, 5.0]
+  no_object_weight: 0.1
