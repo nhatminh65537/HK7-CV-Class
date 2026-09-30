@@ -22,7 +22,7 @@ import torch
 from torch.utils.data import DataLoader
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "src"))
-from brats.datasets import build_train_dataset          # noqa: E402
+from brats.datasets import build_train_dataset         # noqa: E402
 from brats.inference import binarize, predict_volume   # noqa: E402
 from brats.io import make_source                       # noqa: E402
 from brats.losses import build_loss                    # noqa: E402
