@@ -16,6 +16,11 @@ def load_config(path: str, overrides: list[str] | None = None) -> dict:
     if "base" in cfg:
         base = load_config(os.path.join(os.path.dirname(path), cfg.pop("base")))
         cfg = deep_update(base, cfg)
+    return apply_overrides(cfg, overrides)
+
+
+def apply_overrides(cfg: dict, overrides: list[str] | None) -> dict:
+    """Ghi đè dạng a.b=giá_trị (giá trị đọc như YAML) lên một config đã có."""
     for ov in overrides or []:
         k, v = ov.split("=", 1)
         d = cfg

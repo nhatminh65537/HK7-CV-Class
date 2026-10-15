@@ -16,4 +16,4 @@ model:
   # vit_bottleneck: {depth: 1, hidden: 384, heads: 6}   # bật dòng này = cấu hình Encoder+Decoder
 loss:
   cost_weight: [2.0, 5.0, 5.0]
-  no_object_weight: 0.1
+  no_object_weight: 1.0       # giống config BraTS gốc (không giảm trọng số lớp "no object")

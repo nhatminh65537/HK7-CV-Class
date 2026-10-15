@@ -4,6 +4,10 @@
 
   python evaluate.py --ckpt runs/transunet2d/best.pt --split test
   python evaluate.py --ckpt runs/transunet2d/best.pt --split val --limit 20 --save-nifti --hd95
+  python evaluate.py --ckpt runs/transunet2d/best.pt --split test --hd95 --opts model.decoder.lazy_mask=true --tag lazy
+
+--opts ghi đè config lưu trong checkpoint (chỉ những gì không đổi trọng số, ví dụ lazy_mask).
+--tag đổi thư mục kết quả thành eval_<split>_<tag> để không ghi đè lần đánh giá trước.
 """
 from __future__ import annotations
 
@@ -11,6 +15,7 @@ import argparse
 import csv
 import os
 import sys
+import time
 
 import nibabel as nib
 import numpy as np
@@ -22,7 +27,7 @@ from brats.io import make_source                              # noqa: E402
 from brats.metrics import case_metrics                        # noqa: E402
 from brats.models import build_model                          # noqa: E402
 from brats.preprocess import preprocess_case, regions_to_seg, uncrop  # noqa: E402
-from brats.utils import load_splits                           # noqa: E402
+from brats.utils import apply_overrides, load_splits      # noqa: E402
 from brats.viz import save_overlay                            # noqa: E402
 
 
@@ -34,25 +39,33 @@ def main():
     ap.add_argument("--hd95", action="store_true")
     ap.add_argument("--save-nifti", action="store_true")
     ap.add_argument("--figures", type=int, default=3, help="số ca lưu ảnh minh họa")
+    ap.add_argument("--opts", nargs="*", default=[], help="ghi đè config của checkpoint, vd model.decoder.lazy_mask=true")
+    ap.add_argument("--tag", default="", help="hậu tố thư mục kết quả: eval_<split>_<tag>")
     args = ap.parse_args()
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     ck = torch.load(args.ckpt, map_location=device, weights_only=False)
-    cfg = ck["cfg"]
+    cfg = apply_overrides(ck["cfg"], args.opts)
     model = build_model(cfg).to(device)
     model.load_state_dict(ck["model"])
     source = make_source(cfg["data"])
     ids = load_splits(cfg["splits"])[args.split]
     ids = ids[: args.limit] if args.limit else ids
 
-    out_dir = os.path.join(os.path.dirname(args.ckpt), f"eval_{args.split}")
+    out_dir = os.path.join(os.path.dirname(args.ckpt), f"eval_{args.split}" + (f"_{args.tag}" if args.tag else ""))
     os.makedirs(out_dir, exist_ok=True)
     rows = []
+    if device.type == "cuda":
+        torch.cuda.reset_peak_memory_stats()
     for k, cid in enumerate(ids):
         c = preprocess_case(source.load(cid))
-        probs = predict_volume(model, c["image"], cfg, device)
+        t0 = time.perf_counter()
+        probs = predict_volume(model, c["image"], cfg, device)   # chỉ đo thời gian suy luận (không tính đọc dữ liệu)
+        if device.type == "cuda":
+            torch.cuda.synchronize()
+        sec = time.perf_counter() - t0
         pred = binarize(probs, cfg["eval"].get("threshold", 0.5))
-        m = {"id": cid, **case_metrics(pred, c["regions"], args.hd95)}
+        m = {"id": cid, **case_metrics(pred, c["regions"], args.hd95), "sec": sec}
         rows.append(m)
         print(f"[{k + 1}/{len(ids)}] {cid}  " + "  ".join(f"{a}={b:.3f}" for a, b in m.items() if a != "id"), flush=True)
         if args.save_nifti:

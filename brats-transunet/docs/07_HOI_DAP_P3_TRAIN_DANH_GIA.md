@@ -151,7 +151,7 @@ So với cấu hình BraTS Decoder-only của repo gốc (`configs/Brats/decoder
 | Khởi tạo trọng số | He (kaiming normal) cho conv, xavier cho Transformer | mặc định của PyTorch | ảnh hưởng nhỏ |
 | Transformer decoder | 20 query, 3 lớp, hidden 192, 8 đầu, FFN 1536, feature 1/8–1/2 | giống (2D); 3D: hidden 96, FFN 384 | |
 | Độ chính xác của attention | ép fp32 (`is_mhsa_float32: True`) | fp16 theo AMP | |
-| Trọng số lớp "không có gì" | không đặt → 1.0 | 0.1 (mặc định Mask2Former) | nên thử cả hai |
+| Trọng số lớp "không có gì" | không đặt → 1.0 | 1.0 (từ 13/10; hai lần train đầu dùng 0.1) | giống |
 | BCE/Dice của mask | trên toàn bộ voxel | trên 12 544 điểm ngẫu nhiên | `loss.num_points=0` để giống gốc |
 | Trọng số loss, cách gộp aux | code: 2 : 5 : 5 chia 10, kiểu `'v1'` (paper viết λ₀ = 0.7, λ₁ = 0.3) | giống code gốc | |
 | Deep supervision của CNN | tắt (`disable_ds: True`) | không có | giống |

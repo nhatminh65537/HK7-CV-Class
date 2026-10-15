@@ -1,0 +1,7 @@
+# Phương án E ở 3D thu nhỏ: C + decoder gọn (FFN x2, dùng chung trọng số 3 tầng).
+base: transunet3d_small_fixed.yaml
+output_dir: runs/transunet3d_small_lite
+model:
+  decoder:
+    ffn_mult: 2
+    shared_layers: true

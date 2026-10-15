@@ -29,7 +29,7 @@ train:
   fg_prob: 0.5                # xác suất chọn mẫu có u (cân bằng vì u rất nhỏ)
   augment:
     affine_prob: 0.2
-  epochs: 100
+  epochs: 50                  # baseline đã chốt (docs/08 mục 6): 50 epoch cho mọi model
   iters_per_epoch: 250
   warmup_epochs: 2
   lr: 3.0e-4
@@ -40,7 +40,7 @@ train:
 
 eval:
   every: 5                    # validate mỗi 5 epoch
-  val_cases: 10               # chỉ dùng 10 ca val khi đang train cho nhanh; đánh giá đủ bằng evaluate.py
+  val_cases: 30               # số ca val dùng khi đang train (chọn best.pt); đánh giá đủ bằng evaluate.py
   batch_size: 16              # số lát cắt / lần (2D)
   sw_batch_size: 1            # 3D sliding window
   overlap: 0.5

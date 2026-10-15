@@ -10,6 +10,9 @@ Loss functions.
      chi phí nhỏ nhất: cost = 2·(-p_lớp) + 5·BCE(mask) + 5·Dice(mask)   (trọng số giống code gốc).
    - Query được ghép: học đúng lớp + mask. Query không được ghép: học lớp "no object".
    - loss = 0.2·CE_lớp + 0.5·BCE_mask + 0.5·Dice_mask, tính cho output cuối và mọi output trung gian.
+
+3) FixedQueryLoss — cho decoder `fixed_queries` (docs/08 mục 3.2): query k luôn là vùng k, nên không cần
+   ghép cặp. Mỗi output (cuối + trung gian) dùng đúng loss của U-Net (BCE + Dice theo vùng), gộp như (2).
 """
 from __future__ import annotations
 
@@ -68,16 +71,30 @@ class SetCriterion(nn.Module):
         return [{"labels": torch.nonzero(present[b]).squeeze(1), "masks": target[b][present[b]]}
                 for b in range(target.shape[0])]
 
-    def _points(self, P: int, device):
+    def _points_idx(self, P: int, device):
         """Chỉ số các điểm dùng để tính chi phí ghép cặp và loss mask (None = dùng toàn bộ)."""
         if not self.num_points or self.num_points >= P:
             return None
         return torch.randint(0, P, (self.num_points,), device=device)
 
+    @staticmethod
+    def _points(out: dict, pix, pts):
+        """Mask logit (B, N, P) tại các điểm lấy mẫu (P = mọi voxel nếu pts là None).
+
+        Output thường có sẵn pred_masks. Output của decoder lazy_mask khi train chỉ có query đã hạ kênh,
+        nên chỉ tính logit tại đúng các điểm cần, không dựng mask đủ độ phân giải."""
+        if "pred_masks" in out:
+            m = out["pred_masks"].flatten(2)
+            return m if pts is None else m[:, :, pts]
+        f = pix.flatten(2)
+        if pts is not None:
+            f = f[:, :, pts]
+        return torch.einsum("bqc,bcp->bqp", out["mask_embed"], f) + out["mask_bias"][..., None]
+
     @torch.no_grad()
-    def match(self, logits, masks, targets, pts=None):
-        """Hungarian matching. Gom mọi ma trận chi phí rồi chuyển về CPU MỘT lần: chuyển từng ca
-        một sẽ buộc GPU đồng bộ rất nhiều lần và làm chậm hẳn vòng train."""
+    def match(self, logits, m, targets, pts=None):
+        """Hungarian matching. m: mask logit (B, N, P). Gom mọi ma trận chi phí rồi chuyển về CPU MỘT lần:
+        chuyển từng ca một sẽ buộc GPU đồng bộ rất nhiều lần và làm chậm hẳn vòng train."""
         B, N = logits.shape[:2]
         ks = [len(t["labels"]) for t in targets]
         e = torch.empty(0, dtype=torch.long)
@@ -88,11 +105,12 @@ class SetCriterion(nn.Module):
         for b, t in enumerate(targets):
             if ks[b] == 0:
                 continue
-            m, tm = masks[b].flatten(1), t["masks"].flatten(1).float()
+            tm = t["masks"].flatten(1).float()
             if pts is not None:
-                m, tm = m[:, pts], tm[:, pts]
+                tm = tm[:, pts]
+            mb = m[b]
             big[b, :, : ks[b]] = (self.w_cls * -prob[b][:, t["labels"]]
-                                  + self.w_bce * _pair_bce(m, tm) + self.w_dice * _pair_dice(m, tm))
+                                  + self.w_bce * _pair_bce(mb, tm) + self.w_dice * _pair_dice(mb, tm))
         cost = big.cpu().numpy()                       # một lần đồng bộ duy nhất cho cả batch
         idx = []
         for b in range(B):
@@ -103,20 +121,21 @@ class SetCriterion(nn.Module):
             idx.append((torch.as_tensor(r, dtype=torch.long), torch.as_tensor(c, dtype=torch.long)))
         return idx
 
-    def _single(self, logits, masks, targets, pts=None, idx=None):
-        logits, masks = logits.float(), masks.float()
+    def _single(self, out, pix, targets, pts=None, idx=None):
+        logits = out["pred_logits"].float()
+        m = self._points(out, pix, pts).float()        # (B, N, P)
         if idx is None:
-            idx = self.match(logits, masks, targets, pts)
+            idx = self.match(logits, m, targets, pts)
         B, N = logits.shape[:2]
         tgt_cls = torch.full((B, N), self.K, dtype=torch.long, device=logits.device)
         src_m, tgt_m = [], []
         for b, (r, c) in enumerate(idx):
             if len(r):
                 tgt_cls[b, r] = targets[b]["labels"][c]
-                sm, tm = masks[b, r].flatten(1), targets[b]["masks"][c].flatten(1).float()
+                tm = targets[b]["masks"][c].flatten(1).float()
                 if pts is not None:
-                    sm, tm = sm[:, pts], tm[:, pts]
-                src_m.append(sm)
+                    tm = tm[:, pts]
+                src_m.append(m[b, r])
                 tgt_m.append(tm)
         loss_cls = F.cross_entropy(logits.transpose(1, 2), tgt_cls, self.empty_weight)
         if not src_m:  # cả batch không có u
@@ -130,16 +149,31 @@ class SetCriterion(nn.Module):
 
     def forward(self, out: dict, target: torch.Tensor):
         targets = self.make_targets(target)
-        pts = self._points(int(np.prod(target.shape[2:])), target.device)
-        final, idx = self._single(out["pred_logits"], out["pred_masks"], targets, pts)
+        pts = self._points_idx(int(np.prod(target.shape[2:])), target.device)
+        pix = out.get("mask_pix")
+        final, idx = self._single(out, pix, targets, pts)
         reuse = idx if self.reuse_match else None
-        aux = [self._single(a["pred_logits"], a["pred_masks"], targets, pts, reuse)[0]
-               for a in out.get("aux_outputs", [])]
+        aux = [self._single(a, pix, targets, pts, reuse)[0] for a in out.get("aux_outputs", [])]
         return (final + sum(aux) / len(aux)) / 2 if aux else final   # giống max_loss_cal='v1'
+
+
+class FixedQueryLoss(nn.Module):
+    """Loss cho decoder fixed_queries: query k = vùng k (WT, TC, ET), không cần Hungarian matching."""
+
+    def __init__(self):
+        super().__init__()
+        self.region = RegionDiceBCELoss()
+
+    def forward(self, out: dict, target: torch.Tensor):
+        final = self.region({"logits": out["pred_masks"]}, target)
+        aux = [self.region({"logits": a["pred_masks"]}, target) for a in out.get("aux_outputs", [])]
+        return (final + sum(aux) / len(aux)) / 2 if aux else final   # gộp giống SetCriterion
 
 
 def build_loss(cfg: dict):
     if cfg["model"]["name"] == "transunet":
+        if (cfg["model"].get("decoder") or {}).get("fixed_queries"):
+            return FixedQueryLoss()
         l = cfg.get("loss", {})
         return SetCriterion(3, tuple(l.get("cost_weight", (2.0, 5.0, 5.0))), l.get("no_object_weight", 0.1),
                             l.get("num_points", 12544), l.get("reuse_match", False))

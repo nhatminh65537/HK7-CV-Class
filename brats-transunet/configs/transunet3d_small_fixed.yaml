@@ -1,0 +1,8 @@
+# Phương án C ở 3D thu nhỏ: 3 query cố định + mask lười (xem transunet2d_fixed.yaml).
+base: transunet3d_small.yaml
+output_dir: runs/transunet3d_small_fixed
+model:
+  decoder:
+    num_queries: 3
+    fixed_queries: true
+    lazy_mask: true

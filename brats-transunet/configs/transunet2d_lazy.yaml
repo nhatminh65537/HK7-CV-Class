@@ -1,0 +1,8 @@
+# Phương án B (docs/08 mục 3.1): TransUNet 2D baseline + tính mask "lười".
+# Cùng trọng số, cùng dự đoán với transunet2d.yaml -> KHÔNG cần train; dùng để đo (benchmark.py)
+# hoặc đánh giá lại checkpoint baseline: evaluate.py ... --opts model.decoder.lazy_mask=true --tag lazy
+base: transunet2d.yaml
+output_dir: runs/transunet2d_lazy
+model:
+  decoder:
+    lazy_mask: true

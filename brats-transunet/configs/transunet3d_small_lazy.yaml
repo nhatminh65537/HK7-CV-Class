@@ -1,0 +1,6 @@
+# Phương án B ở 3D thu nhỏ: baseline + mask lười. Không cần train (xem transunet2d_lazy.yaml).
+base: transunet3d_small.yaml
+output_dir: runs/transunet3d_small_lazy
+model:
+  decoder:
+    lazy_mask: true
