@@ -5,6 +5,9 @@ TransUNet (bản tự cài đặt, 2D/3D) = U-Net + Transformer decoder (+ tuỳ
                                                                   └─> feat 1/1 ─> 1x1 ─> F_pixel
                                                   20 query ─> [masked cross-attn, self-attn, FFN] × 3
                                                   ─> pred_logits (B,20,K+1), pred_masks (B,20,*S)
+
+Tùy chọn `decoder.lazy_mask` (docs/08 mục 3.1): không tạo F_pixel (B, hidden, *S); decoder nhận thẳng
+feat 1/1 (B, C, *S) và trọng số của conv 1x1. Cùng trọng số, cùng kết quả, nên checkpoint cũ dùng được.
 """
 from __future__ import annotations
 
@@ -22,6 +25,7 @@ class TransUNet(nn.Module):
         super().__init__()
         decoder = dict(decoder or {})
         self.ms_idxs = decoder.pop("ms_idxs", [-4, -3, -2])
+        self.lazy_mask = decoder.pop("lazy_mask", False)
         self.unet = UNet(spatial_dims, in_channels, num_classes, features, vit_bottleneck, patch_size)
         ch = self.unet.decoder_channels
         hidden = decoder.get("hidden", 192)
@@ -31,4 +35,7 @@ class TransUNet(nn.Module):
 
     def forward(self, x):
         feats = self.unet.forward_features(x)
-        return self.decoder([feats[i] for i in self.ms_idxs], self.mask_proj(feats[-1]))
+        ms = [feats[i] for i in self.ms_idxs]
+        if self.lazy_mask:
+            return self.decoder(ms, pix=feats[-1], proj=self.mask_proj)
+        return self.decoder(ms, self.mask_proj(feats[-1]))

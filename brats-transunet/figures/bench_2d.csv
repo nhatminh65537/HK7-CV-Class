@@ -1,0 +1,6 @@
+config,dims,patch,params_M,train_s_per_step,train_peak_GB,infer_batch,infer_s,infer_peak_GB
+unet2d,2,160x160,5.686,0.7444,0.369,16,0.3826,0.302
+transunet2d,2,160x160,8.568,1.9843,0.84,16,0.9904,0.774
+transunet2d_lazy,2,160x160,8.568,1.7846,0.678,16,0.822,0.598
+transunet2d_fixed,2,160x160,8.561,1.3366,0.643,16,0.7518,0.533
+transunet2d_lite,2,160x160,6.339,1.3102,0.614,16,0.7507,0.506

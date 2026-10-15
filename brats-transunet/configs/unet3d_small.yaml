@@ -14,4 +14,4 @@ train:
   augment: {}
 eval:
   every: 10
-  val_cases: 5
+  val_cases: 30

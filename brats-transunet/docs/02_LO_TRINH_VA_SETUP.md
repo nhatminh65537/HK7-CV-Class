@@ -226,6 +226,14 @@ brats-transunet/
 | 18/09 | **U-Net 2D, 140 ca train, 20 epoch** (~80 s/epoch) | val Dice mean 0.905; **test (30 ca): WT 0.870, TC 0.857, ET 0.830, mean 0.852**; trung vị 0.914 / 0.920 / 0.892; 1/30 ca Dice < 0.5 |
 | 18/09 | Tối ưu tốc độ TransUNet (gom Hungarian về CPU 1 lần, lấy mẫu 12.544 điểm cho loss mask) | 2.25 s → **0.81 s mỗi bước**, epoch từ ~560 s xuống **203 s** |
 | 18/09 | **TransUNet 2D, cùng 140 ca, cùng 20 epoch** (~203 s/epoch, 68 phút) | val tốt nhất ở epoch 4: mean 0.868. Về sau WT tăng (0.934) nhưng **TC tụt dần 0.856 → 0.694** |
+| 13/10 | Chốt baseline (docs/08 mục 6): split đủ 1251 ca (876 / 188 / 187), 50 epoch, `no_object_weight` 1.0, val 30 ca | Kết quả hai lượt trên không còn so được với các lượt sau |
+| 13–14/10 | **U-Net 2D và TransUNet 2D, baseline mới** | Test 187 ca, trung bình 3 vùng: U-Net 0.871, TransUNet 0.876 (+0.43; ET +1.17); chưa có ý nghĩa thống kê. Chi tiết: docs/09 mục 2 |
+| 14/10 | **U-Net 3D thu nhỏ, baseline mới** | val 30 ca 0.847; chưa đánh giá test. 262 s/epoch ở chế độ High performance |
+| 14/10 | Cài phương án B, C, E sau cờ config; thêm `benchmark.py`, `check_variants.py`, `compare_runs.py` | Code với cờ tắt trùng hoàn toàn code cũ. Hướng dẫn chạy: docs/09 |
+| 14–15/10 | **Xong 2D: B (đánh giá lại), C và E (train 50 epoch); đánh giá U-Net 3D trên test** | B: Dice trùng baseline. C: không kém A (−0.03 điểm), nhanh hơn khoảng 1/3. U-Net 3D kém U-Net 2D 0.76 điểm. Chi tiết và nhận xét: docs/09 mục 6 |
+| 15/10 | Phân tích dao động khi train, chốt kế hoạch 3D (train A và C ở 96³; E và 128³ chỉ đo benchmark); phân tích ca không có ET | Test có 5 ca không có ET; A đoán đúng 2, các model khác sai cả 5. Kế hoạch và lệnh: docs/09 mục 7–9 |
+| 15/10 | Báo cáo đợt 2 | docs/10 |
+| 15/10 | **Bắt đầu A-3D** (TransUNet 3D baseline) | Đang train; epoch 0–6 mất khoảng 1 500 s/epoch |
 
 Nhận xét từ hai lần train đầu:
 

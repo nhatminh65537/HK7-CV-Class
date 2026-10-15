@@ -1,0 +1,9 @@
+# Phương án C (docs/08 mục 3.2): 3 query cố định (query k = vùng k: WT, TC, ET), bỏ Hungarian và class head.
+# Bật luôn mask lười vì nó không đổi kết quả. Muốn đo riêng tác dụng của query cố định: --opts model.decoder.lazy_mask=false
+base: transunet2d.yaml
+output_dir: runs/transunet2d_fixed
+model:
+  decoder:
+    num_queries: 3
+    fixed_queries: true
+    lazy_mask: true

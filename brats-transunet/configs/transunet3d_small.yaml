@@ -15,7 +15,7 @@ model:
     ms_idxs: [-4, -3, -2]
 loss:
   cost_weight: [2.0, 5.0, 5.0]
-  no_object_weight: 0.1
+  no_object_weight: 1.0       # giống config BraTS gốc
 train:
   patch_size: [96, 96, 96]
   batch_size: 1
@@ -24,7 +24,6 @@ train:
   samples_per_load: 4
   num_workers: 2
   augment: {}
-  epochs: 100
 eval:
   every: 10
-  val_cases: 5
+  val_cases: 30

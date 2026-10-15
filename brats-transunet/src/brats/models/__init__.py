@@ -3,6 +3,7 @@ from __future__ import annotations
 import torch
 import torch.nn.functional as F
 
+from .transformer_decoder import lazy_mask_logits
 from .transunet import TransUNet
 from .unet import UNet
 
@@ -23,6 +24,12 @@ def region_probs(out: dict) -> torch.Tensor:
     """Output model -> xác suất 3 region (B, 3, *S) trong [0, 1]."""
     if "logits" in out:
         return out["logits"].float().sigmoid()
+    if "pred_masks" in out:
+        masks = out["pred_masks"].float()
+    else:                                                          # lazy_mask khi train: dựng mask từ query
+        masks = lazy_mask_logits(out["mask_embed"], out["mask_bias"], out["mask_pix"]).float()
+    if "pred_logits" not in out:                                   # fixed_queries: query k = vùng k
+        return masks.sigmoid()
     cls = F.softmax(out["pred_logits"].float(), -1)[..., :-1]      # bỏ lớp "no object"
-    masks = out["pred_masks"].float().sigmoid()
+    masks = masks.sigmoid()
     return torch.einsum("bqc,bq...->bc...", cls, masks).clamp(0, 1)

@@ -1,0 +1,7 @@
+# Phương án E (docs/08 mục 3.3): C + decoder gọn (FFN x2, 3 tầng tinh chỉnh dùng chung trọng số).
+base: transunet2d_fixed.yaml
+output_dir: runs/transunet2d_lite
+model:
+  decoder:
+    ffn_mult: 2
+    shared_layers: true
